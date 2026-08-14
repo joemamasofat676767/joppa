@@ -1,5 +1,7 @@
 # Overall 
-**This is my ai: *joppa*™. joppa is a free on device ai i made for fun. i plan to have it run on mid-end phones for actual local ai.
+***This is my ai: *joppa*™.*** 
+<img src="images/logo.jpg" alt="orange hand-drawn smiley face" width="30%">
+**joppa is a free on device ai i made for fun. i plan to have it run on mid-end phones for actual local ai.
 Feel free to use this as a template for your own ai. Made by me with python
 version: joppa 0.1t** \
 go to [naming](#naming-) to know what the suffix means
