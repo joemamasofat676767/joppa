@@ -1,7 +1,7 @@
 # Overall 
 **This is my ai: *joppa*™. joppa is a free on device ai i made for fun. i plan to have it run on mid-end phones for actual local ai
 Feel free to use this as a template for your own ai. Made by me with python
-version: joppa 0.1t**
+version: joppa 0.1t** \
 go to [naming](#naming-) to know what the suffix means
 or go to [lore](#lore-) to know why it is named joppa
 # Support 😣
