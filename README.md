@@ -1,5 +1,5 @@
 # Overall 
-***This is my ai: *joppa*™.***
+## ***This is my ai: *joppa*™.***
 
 <img src="./images/logo.jpg" alt="orange hand-drawn smiley face" width="30%">
 
