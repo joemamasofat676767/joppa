@@ -38,7 +38,7 @@ def GenRef(tokens):
 def CalcChance(vect):
 	return [abs(item ** CHANCE_MULTI) for item in vect]
    
-def generate(prompt, StartText="the", ref=None):
+def generate(prompt, StartText="cat", ref=None):
 	# QuestionWords = ["what", "who", "where", "when", "how"]
 
 	# thinking = True
@@ -105,7 +105,7 @@ def NlpFilter(prompt):
 				TempResult.append(word[:-3] + "y")
 			elif word[-2:] == "es":
 				if word[-4:-2] in EsEnds2 or word[-3] in EsEnd1:
-					TempResultesult.append(word[:-2])
+					TempResult.append(word[:-2])
 				else:
 					TempResult.append(word)
 			elif word[-1] == "s":
@@ -126,7 +126,7 @@ def NlpFilter(prompt):
 					TempResult.append(word[:-2])
 			else:
 				TempResult.append(word)
-		TempResult = untypofy(TempResult)
+		# TempResult = untypofy(TempResult)
 		TempResult.append("<end>")
 		for token in TempResult:
 			result.append(token)
@@ -135,12 +135,13 @@ def NlpFilter(prompt):
 def untypofy(prompt):
 	return [get_close_matches(word, knowledge.keys(), n=1, cutoff=0.3)[0] if not word in knowledge else word for word in prompt]
 
-fd.mat.lay(KNOWLEDGE_PATH)
+fd.mat.lay(TOKENS_PATH)
 mats = fd.mat.GetMats()
-fd.mat.trash(KNOWLEDGE_PATH)
+fd.mat.trash(TOKENS_PATH)
 knowledge = {}
 for mat in mats:
 	knowledge[mat.GetWord().decode()] = mat
+	print(type(mat.GetWord()))
 
 UniWords = []
 with open(UNI_WORDS_PATH, "r") as file:
@@ -163,25 +164,23 @@ if __name__ == "__main__":
 	start = time.perf_counter()
 	for i in range(epoch):
 		FirstIter = True
-		for sentance in filter(text):
-			WordsInSentence = sentance.split()
-			if not WordsInSentence:
-				continue 
-			for word in WordsInSentence:
-				if word not in knowledge:
-					knowledge[word] = fd.mat.MakeMat(word.encode("utf-8"), [], [round(uniform(-10,10), 5) for _ in range(3)])
-				if FirstIter:
-					LastWord = word
-					FirstIter = False
-					continue
-				if word.encode("utf-8") not in knowledge[LastWord].GetNext():
-					knowledge[LastWord].sow(word)
-				for j in range(fd.mat.inspect()[0]):
-					knowledge[LastWord].restyle("e", str(knowledge[LastWord].GetEmbeddings()[j] + round((knowledge[word].GetEmbeddings()[j] - knowledge[LastWord].GetEmbeddings()[j]) * LR, 3)), j)
-					mag = sum([knowledge[LastWord].GetEmbeddings()[k] ** 2 for k in range(3)]) ** 0.5
-					knowledge[LastWord].restyle("e", str(round(knowledge[LastWord].GetEmbeddings()[j] / mag, 3)), j)
+		for word in NlpFilter(filter(text)):
+			if word == "<end>":
+				FirstIter = True
+				continue
+			if word not in knowledge:
+				knowledge[word] = fd.mat.MakeMat(word.encode("utf-8"), [], [round(uniform(-10,10), 5) for _ in range(3)])
+			if FirstIter:
 				LastWord = word
-		FirstIter = True
+				FirstIter = False
+				continue
+			if word.encode("utf-8") not in knowledge[LastWord].GetNext():
+				knowledge[LastWord].sow(word)
+			for j in range(fd.mat.inspect()[0]):
+				knowledge[LastWord].restyle("e", str(knowledge[LastWord].GetEmbeddings()[j] + round((knowledge[word].GetEmbeddings()[j] - knowledge[LastWord].GetEmbeddings()[j]) * LR, 3)), j)
+				mag = sum([knowledge[LastWord].GetEmbeddings()[k] ** 2 for k in range(3)]) ** 0.5
+				knowledge[LastWord].restyle("e", str(round(knowledge[LastWord].GetEmbeddings()[j] / mag, 3)), j)
+			LastWord = word
 		print(f"finished {i+1} epoch")
 	end = time.perf_counter()
 	
@@ -202,4 +201,4 @@ if __name__ == "__main__":
 		else:
 			print("enter something")
 
-	fd.mat.roll(KNOWLEDGE_PATH)
+	fd.mat.roll(TOKENS_PATH)
