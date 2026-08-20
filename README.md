@@ -21,7 +21,7 @@ Deepseek AI helped me a bit.
 - reinforcement learning
 - pattern matcher
 # specs (for nerds) 📊
-*size*: ~110.5KB
+*size*: ~110.5KB \
 *ram usage*: ~15MB(due to python interpreter)
 # lore ⏳️
 ## name 💳
