@@ -76,79 +76,78 @@ if __name__ == "__main__":
 	for mat in mats:
 		tokens[mat.GetWord().decode()] = mat
 
-	for prompt, answer in data.items():
-		response = []
+	epoches = [0, "N"]
+	while True:
+		epoches = [input("epochs: "), "N"]
+		if epoches[0] == "max":
+			epoches = [1_000_000, "M"]
+			break
+		elif not epoches[0].isdigit():
+			print("enter num")
+			continue
+		else:
+			epoches[0] = int(epoches[0])
+			break
+	bundle = 1
+	while True:
+		bundle = input("bundle size: ")
+		if bundle == "na":
+			bundle = epoches[0]
+			break
+		elif not bundle.isdigit():
+			print("enter num")
+			continue
+		else:
+			bundle = int(bundle)
+			break
+	HighestAccuracy = 0
+	BundleIndex = 0
+	epoch = 0
+	StartTime = time.time()
+	print("="*40)
+	for _ in range(epoches[0]):
 		FinalPrompt = []
 		FinalAnswer = []
-		SplittedAnswer = answer.split()
-		SplittedPrompt = prompt.split()
-		buffer = []
-		for token in SplittedPrompt:
-			if not token in knowledge[1].values():
-				knowledge[0] += 1
-				knowledge[1][str(knowledge[0])] = token
-				if not token in UniWords:
-					tokens[token] = fd.mat.MakeMat(token.encode("utf-8"), [], [round(uniform(-10,10), 5) for _ in range(3)])
-			VectorizedToken = str(*[k for k, v in knowledge[1].items() if v == token])
-			if token in conjunctions:
-				FinalPrompt.append(buffer)
-				buffer = []
-				continue
-			if not VectorizedToken in UniWords:
-				buffer.append(f"X{VectorizedToken}")
-				continue
-			buffer.append(VectorizedToken)
-		FinalPrompt.append(buffer)
-		buffer = []
+		for prompt, answer in data.items():
+			response = []
+			SplittedAnswer = answer.split()
+			SplittedPrompt = prompt.split()
+			buffer = []
+			for token in SplittedPrompt:
+				if not token in knowledge[1].values():
+					knowledge[0] += 1
+					knowledge[1][str(knowledge[0])] = token
+					if not token in UniWords:
+						tokens[token] = fd.mat.MakeMat(token.encode("utf-8"), [], [round(uniform(-10,10), 5) for _ in range(3)])
+				VectorizedToken = str(*[k for k, v in knowledge[1].items() if v == token])
+				if token in conjunctions:
+					FinalPrompt.append(buffer)
+					buffer = []
+					continue
+				if not VectorizedToken in UniWords:
+					buffer.append(f"X{VectorizedToken}")
+					continue
+				buffer.append(VectorizedToken)
+			FinalPrompt.append(buffer)
+			buffer = []
 
-		for token in SplittedAnswer:
-			if not token in knowledge[1].values():
-				knowledge[0] += 1
-				knowledge[1][str(knowledge[0])] = token
-				if not token in UniWords:
-					tokens[token] = fd.mat.MakeMat(token.encode("utf-8"), [], [round(uniform(-10,10), 5) for _ in range(3)])
-			VectorizedToken = str(*[k for k, v in knowledge[1].items() if v == token])
-			if token in conjunctions:
-				FinalAnswer.append(Buffer)
-				buffer = []
-				continue
-			if not VectorizedToken in UniWords:
-				buffer.append(f"X{VectorizedToken}")
-				continue
-			buffer.append(VectorizedToken)
-		FinalAnswer.append(buffer)
+			for token in SplittedAnswer:
+				if not token in knowledge[1].values():
+					knowledge[0] += 1
+					knowledge[1][str(knowledge[0])] = token
+					if not token in UniWords:
+						tokens[token] = fd.mat.MakeMat(token.encode("utf-8"), [], [round(uniform(-10,10), 5) for _ in range(3)])
+				VectorizedToken = str(*[k for k, v in knowledge[1].items() if v == token])
+				if token in conjunctions:
+					FinalAnswer.append(Buffer)
+					buffer = []
+					continue
+				if not VectorizedToken in UniWords:
+					buffer.append(f"X{VectorizedToken}")
+					continue
+				buffer.append(VectorizedToken)
+			FinalAnswer.append(buffer)
 
-		
-		epoches = [0, "N"]
-		while True:
-			epoches = [input("epochs: "), "N"]
-			if epoches[0] == "max":
-				epoches = [1_000_000, "M"]
-				break
-			elif not epoches[0].isdigit():
-				print("enter num")
-				continue
-			else:
-				epoches[0] = int(epoches[0])
-				break
-		bundle = 1
-		while True:
-			bundle = input("bundle size: ")
-			if bundle == "na":
-				bundle = epoches[0]
-				break
-			elif not bundle.isdigit():
-				print("enter num")
-				continue
-			else:
-				bundle = int(bundle)
-				break
-		HighestAccuracy = 0
-		BundleIndex = 0
-		epoch = 0
-		StartTime = time.time()
-		print("="*40)
-		for _ in range(epoches[0]):
 			for finalP, finalA in zip(FinalPrompt, FinalAnswer):
 				MeaningWords = [token for token in finalP if token[0] == "X"]
 				for token in MeaningWords:
@@ -164,55 +163,63 @@ if __name__ == "__main__":
 						ClosestSim = sim
 						ClosestPatternV = patternV
 						ClosestPatternK = patternK
-				if not ClosestPatternK:
+				if ClosestSim < 0.45 or not ClosestPatternK:
 					ClosestPatternK = finalP
 
-				response = []
-				ResLen = 0
-				PrevSim = 0.1
+				PrevSim = 0
 				if ClosestPatternV:
-					PrevSim = ClosestPatternV[2]
-					ResLen = ClosestPatternV[0]
+					PrevSim = ClosestPatternV[1]
 				else:
-					ResLen = randint(3, 10)
-				while True:
-					ResLen += uniform(((-3/PrevSim)**0.9).real, ((3/PrevSim)**0.9).real)
-					if ResLen > 0:
-						break
-				ResLen = round(ResLen.real)
-				for _ in range(ResLen):
-					chosen = choice(UniWords + [ChooseWord])
-					if callable(chosen):
-						chosen = chosen(knowledge, RefClosestWords, CHANCE_MULTI)
-					response.append(chosen)
+					ClosestPatternV = [" ".join([list(choice(knowledge[1])) for _ in range(3)]), 0]
+				ResponseBuffer = ClosestPatternV[0].split() if len(ClosestPatternV[0]) > 1 else list(ClosestPatternV[0])
+				for i, token in enumerate(ResponseBuffer):
+					chance = randint(1,100)
+					if chance >= PrevSim * 100:
+						ResponseBuffer[i] = choice(list(knowledge[1].keys()))
+					if PrevSim < 1:
+						if chance >= 33 * (1-(1/(1+abs(PrevSim-1)))):
+							ResponseBuffer.append(choice(list(knowledge[1].keys())))
+						else:
+							del ResponseBuffer[randint(0,len(ResponseBuffer)-1)] 
+				if not ClosestPatternV[0]:
+					for _ in range(randint(0,5)):
+						ResponseBuffer.append(choice(list(knowledge[1])))
+				for i, token in enumerate(ClosestPatternV[0]):
+					if token[0] == "X":
+						ResponseBuffer[i] = choice(list(knowledge[1].keys()))
+				response.append(ResponseBuffer)
 
-				sim = similarity(knowledge, tokens, response, finalA)
-
-			BundleIndex += 1
-			epoch += 1
-			if epoches[1] == "M" and sim == 1.0:
-				print(f"correct in {BundleIndex} epoches")
-				break
-			if BundleIndex == bundle:
-				print("epoch: ", f"{epoch:,}")
-				print("final prompt: ", FinalPrompt)
-				print("final answer: ", FinalAnswer)
-				print("closest pattern (key) found: ", ClosestPatternK)
-				print("closest pattern (value) found: ", ClosestPatternV)
-				print("closest similarity found: ", ClosestSim)
-				print("response length: ", ResLen)
-				print("response: ", response)
-				print("similarity: ", sim)
-				print("="*40)
-				BundleIndex = 0
-
-				if sim > HighestAccuracy:
-					HighestAccuracy = sim
-
-				ClosestPatternK_str = " ".join(ClosestPatternK) if not isinstance(ClosestPatternK, str) else ClosestPatternK 
-				if ClosestPatternK_str in knowledge[2] and knowledge[2][ClosestPatternK_str] and knowledge[2][ClosestPatternK_str][2] > sim:
+				SimTemp =  similarity(knowledge, tokens, ResponseBuffer, finalA)
+				ClosestPatternK_str = " ".join(ClosestPatternK) if not isinstance(ClosestPatternK, str) else ClosestPatternK
+				ResponseBuffer_str = " ".join(ResponseBuffer)
+				if ClosestPatternK_str in knowledge[2] and knowledge[2][ClosestPatternK_str] and knowledge[2][ClosestPatternK_str][1] > SimTemp:
 					continue
-				knowledge[2][ClosestPatternK_str] = [ResLen, response, sim] if not sim == 0.0 else [ResLen, response, 0.01]
+				knowledge[2][ClosestPatternK_str] = [ResponseBuffer, SimTemp]
+
+			sim = 0
+			for seg in response:
+				sim += similarity(knowledge, tokens, seg, finalA) / len(response)
+
+			if sim > HighestAccuracy:
+				HighestAccuracy = sim
+
+		BundleIndex += 1
+		epoch += 1
+		if epoches[1] == "M" and sim == 1.0:
+			print(f"correct in {BundleIndex} epoches")
+			break
+		if BundleIndex == bundle:
+			print("epoch: ", f"{epoch:,}")
+			print("final prompt: ", FinalPrompt)
+			print("final answer: ", FinalAnswer)
+			print("closest pattern (key) found: ", ClosestPatternK)
+			print("closest pattern (value) found: ", ClosestPatternV)
+			print("closest similarity found: ", ClosestSim)
+			print("response length: ", len(response[-1]))
+			print("response: ", response)
+			print("similarity: ", sim)
+			print("="*40)
+			BundleIndex = 0
 	EndTime = time.time()
 	print("highest accuracy: ", HighestAccuracy)
 	print("took: ", f"{round(EndTime-StartTime, 2):,.2f}s")
