@@ -47,6 +47,39 @@ def similarity(knowledge, tokens, input, ans):
 
 	return round(LenSim * 0.1 + StructSim * 0.45 + MeaningSim * 0.45, 3)
 
+def change(knowledge, tokens, PrevPatterns):
+	differences = []
+	for i, ans, sim in enumerate(PrevPatterns):
+		if i == 0:
+			continue
+		LenDiff = abs(len(ans) - len(PrevPatterns[i-1]))
+		StructDiff = 1
+		StructDiff_Point = 1 / (len(ans) - ans.count("X") + 0.01)
+		MeaningDiff = 1
+		for tokenA, tokenP in zip(ans, PrevPatterns[i-1]):
+			if tokenA[0] == "X" or tokenP[0] == "X":
+				MeaningDiff -= 1 - fd.math.taylor(tokens[knowledge[1][tokenA[1:]]].GetEmbeddings(), tokens[knowledge[1][tokenP[1:]]].GetEmbeddings())
+			else:
+				if tokenA == tokenI:
+					StructDiff -= StructDiff_point
+		difference = [None, 0]
+		if LenDiff > difference[1]:
+			difference = ["len", LenDiff]
+		if StructDiff > difference[1]:
+			difference = ["struct", StructDiff]
+		if MeaningDiff > difference[1]:
+			difference = ["meaning", MeaningDiff]
+		difference.append(sim)
+		differences.append(difference)
+	conclusion = {"len" : 0, "struct" : 0, "meaning" : 0}
+	for i in range(len(differences)-1):
+		cat, diff, sim = differences[i+1]
+		PrevCat, PrevDiff, PrevSim = differences[i]
+		if not sim > PrevSim:
+			continue
+		conclusion[cat] += diff
+	return conclusion
+
 if __name__ == "__main__":
 	PATTERNS_PATH = Path(__file__).parent/"patterns.json"
 	LABELED_TRAIN_PATH = Path(__file__).parent/"labeled_train.json"
@@ -147,7 +180,6 @@ if __name__ == "__main__":
 					continue
 				buffer.append(VectorizedToken)
 			FinalAnswer.append(buffer)
-
 			for finalP, finalA in zip(FinalPrompt, FinalAnswer):
 				MeaningWords = [token for token in finalP if token[0] == "X"]
 				for token in MeaningWords:
@@ -167,26 +199,31 @@ if __name__ == "__main__":
 					ClosestPatternK = finalP
 
 				PrevSim = 0
+				PrevPatterns = []
 				if ClosestPatternV:
 					PrevSim = ClosestPatternV[1]
+					PrevPattern = ClosestPatternV[2]
 				else:
-					ClosestPatternV = [" ".join([list(choice(knowledge[1])) for _ in range(3)]), 0]
+					ClosestPatternV = [" ".join([choice(list(knowledge[1].keys())) for _ in range(3)]), 0, []]
 				ResponseBuffer = ClosestPatternV[0].split() if len(ClosestPatternV[0]) > 1 else list(ClosestPatternV[0])
 				for i, token in enumerate(ResponseBuffer):
 					chance = randint(1,100)
 					if chance >= PrevSim * 100:
 						ResponseBuffer[i] = choice(list(knowledge[1].keys()))
-					if PrevSim < 1:
-						if chance >= 33 * (1-(1/(1+abs(PrevSim-1)))):
+					if ClosestPatternV[2]:
+						diff = change(knowledge, tokens, ClosestPatternV[2])
+						if chance <= diff["len"] * 100:
 							ResponseBuffer.append(choice(list(knowledge[1].keys())))
-						else:
-							del ResponseBuffer[randint(0,len(ResponseBuffer)-1)] 
+						if chance <= diff["struct"] * 100:
+							ResponseBuffer[randint(0,len(ResponseBuffer)-1)] = choice(list(knowledge[1].keys()))
+						if chance <= diff["meaning"] * 100:
+							ResponseBuffer[randint(0,len(ResponseBuffer)-1)] = choice(list(knowledge[1].keys()))
 				if not ClosestPatternV[0]:
 					for _ in range(randint(0,5)):
 						ResponseBuffer.append(choice(list(knowledge[1])))
-				for i, token in enumerate(ClosestPatternV[0]):
-					if token[0] == "X":
-						ResponseBuffer[i] = choice(list(knowledge[1].keys()))
+				for i, token in enumerate(ResponseBuffer):
+					if not token in UniWords:
+						ResponseBuffer[i] = "X" + choice(list(knowledge[1].keys()))
 				response.append(ResponseBuffer)
 
 				SimTemp =  similarity(knowledge, tokens, ResponseBuffer, finalA)
@@ -194,7 +231,7 @@ if __name__ == "__main__":
 				ResponseBuffer_str = " ".join(ResponseBuffer)
 				if ClosestPatternK_str in knowledge[2] and knowledge[2][ClosestPatternK_str] and knowledge[2][ClosestPatternK_str][1] > SimTemp:
 					continue
-				knowledge[2][ClosestPatternK_str] = [ResponseBuffer, SimTemp]
+				knowledge[2][ClosestPatternK_str] = [ResponseBuffer_str, SimTemp, PrevPatterns]
 
 			sim = 0
 			for seg in response:
