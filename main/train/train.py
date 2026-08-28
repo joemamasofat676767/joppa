@@ -3,23 +3,26 @@ import json
 import time
 from pathlib import Path
 from random import uniform, randint, choices, choice
+from math import floor
 
-def ChooseWord(knowledge, RefClosestWords, CHANCE_MULTI):
-	words, weights = [], []
-	for word, weight in RefClosestWords:
-		words.append(word)
-		weights.append(abs(weight ** CHANCE_MULTI))
-	return f"X{choices(words, weights=weights)[0]}"
+def LoadBar(amount, length=50):
+	bar_point = length / amount
+	bar = 0
+	while amount > 0:
+		amount -= 1
+		bar += bar_point
+		print("\b"*(length+14),
+			"█"*floor(bar),
+			" "*(length-floor(bar)),
+			f"{bar/length*100:6.2f}%",
+			end="", flush=True)
+		yield ...
 
 def similarity(knowledge, tokens, input, ans):
 	AnsLen, InputLen = len(ans), len(input)
 	LenSim = 1.0 - abs(AnsLen - InputLen) / max(AnsLen, InputLen)
-	StructSim = 0
-	MeaningSim = 0
-	MeaningWordsI = []
-	StructWordsI = []
-	MeaningWordsA = []
-	StructWordsA = []
+	StructSim, MeaningSim = 0, 0
+	MeaningWordsI, StructWordsI, MeaningWordsA, StructWordsA = [], [], [], []
 	for tokenI, tokenA in zip(input, ans):
 		if not tokenI[0] == "X":
 			StructWordsI.append(tokenI)
@@ -34,51 +37,40 @@ def similarity(knowledge, tokens, input, ans):
 			MeaningWordsA.append(tokenA)
 			StructWordsA.append("X")
 	StructSim_point = 1 / (len(StructWordsA) - StructWordsA.count("X") + 0.01)
-	for tokenA, tokenI in zip(StructWordsA, StructWordsI):
-		if tokenA == "X" or tokenI == "X":
-			continue
-		if tokenA == tokenI:
-			StructSim += StructSim_point
 	MeaningSim_point = (len(MeaningWordsA) - MeaningWordsA.count("X"))
-	for tokenA, tokenI in zip(MeaningWordsA, MeaningWordsI):
-		if tokenA == "X" or tokenI == "X":
+	for tokenI, tokenA in zip(StructWordsI, StructWordsA):
+		if tokenI == "X" or tokenA == "X":
+			continue
+		elif tokenA == tokenI:
+			StructSim += StructSim_point
+	for tokenI, tokenA in zip(MeaningWordsI, MeaningWordsA):
+		if tokenI == "X" or tokenA == "X":
 			continue
 		MeaningSim += fd.math.taylor(tokens[knowledge[1][tokenA[1:]]].GetEmbeddings(), tokens[knowledge[1][tokenI[1:]]].GetEmbeddings()) / MeaningSim_point
 
-	return round(LenSim * 0.1 + StructSim * 0.45 + MeaningSim * 0.45, 3)
+	return round(LenSim*0.1 + StructSim*0.45 + MeaningSim*0.45, 5)
 
 def change(knowledge, tokens, PrevPatterns):
-	differences = []
-	for i, ans, sim in enumerate(PrevPatterns):
+	differences = {"len" : 0, "struct" : 0, "meaning" : 0}
+	for i, (ans, _) in enumerate(PrevPatterns):
 		if i == 0:
 			continue
-		LenDiff = abs(len(ans) - len(PrevPatterns[i-1]))
+		LenDiff = len(ans) - len(PrevPatterns[i-1][0])
 		StructDiff = 1
-		StructDiff_Point = 1 / (len(ans) - ans.count("X") + 0.01)
 		MeaningDiff = 1
-		for tokenA, tokenP in zip(ans, PrevPatterns[i-1]):
-			if tokenA[0] == "X" or tokenP[0] == "X":
+		StructDiff_point = 1 / (len(ans) - ans.count("X") + 0.01)
+		for tokenA, tokenP in zip(ans, PrevPatterns[i-1][0]):
+			if tokenA[0] == "X" and tokenP[0] == "X":
 				MeaningDiff -= 1 - fd.math.taylor(tokens[knowledge[1][tokenA[1:]]].GetEmbeddings(), tokens[knowledge[1][tokenP[1:]]].GetEmbeddings())
 			else:
-				if tokenA == tokenI:
+				if tokenA == tokenP:
 					StructDiff -= StructDiff_point
-		difference = [None, 0]
-		if LenDiff > difference[1]:
-			difference = ["len", LenDiff]
-		if StructDiff > difference[1]:
-			difference = ["struct", StructDiff]
-		if MeaningDiff > difference[1]:
-			difference = ["meaning", MeaningDiff]
-		difference.append(sim)
-		differences.append(difference)
-	conclusion = {"len" : 0, "struct" : 0, "meaning" : 0}
-	for i in range(len(differences)-1):
-		cat, diff, sim = differences[i+1]
-		PrevCat, PrevDiff, PrevSim = differences[i]
-		if not sim > PrevSim:
-			continue
-		conclusion[cat] += diff
-	return conclusion
+
+		differences["len"] += LenDiff
+		differences["struct"] += StructDiff
+		differences["meaning"] += MeaningDiff
+
+	return differences
 
 if __name__ == "__main__":
 	PATTERNS_PATH = Path(__file__).parent/"patterns.json"
@@ -89,14 +81,14 @@ if __name__ == "__main__":
 	TEMP = 0.2
 	CHANCE_MULTI = 1/TEMP
 	knowledge = {}
-	data = {}
+	TrainingData = {}
 	conjunctions = []
 	Uniwords = []
 
 	with open(PATTERNS_PATH, "r") as file:
 		knowledge = json.load(file)
 	with open(LABELED_TRAIN_PATH, "r") as file:
-		data = json.load(file)
+		TrainingData = json.load(file)
 	with open(CONJUNCTIONS_PATH, "r") as file:
 		conjunctions = file.read().strip().split(",")
 		conjunctions = [key for key, value in knowledge[1].items() if value in conjunctions]
@@ -121,30 +113,18 @@ if __name__ == "__main__":
 		else:
 			epoches[0] = int(epoches[0])
 			break
-	bundle = 1
-	while True:
-		bundle = input("bundle size: ")
-		if bundle == "na":
-			bundle = epoches[0]
-			break
-		elif not bundle.isdigit():
-			print("enter num")
-			continue
-		else:
-			bundle = int(bundle)
-			break
 	HighestAccuracy = 0
-	BundleIndex = 0
-	epoch = 0
+	EpochIndex = 0
 	StartTime = time.time()
-	print("="*40)
+	print("="*110)
+	LoadingBar = LoadBar(epoches[0], 100)
 	for _ in range(epoches[0]):
 		FinalPrompt = []
 		FinalAnswer = []
-		for prompt, answer in data.items():
+		for prompt, answer in TrainingData.items():
 			response = []
-			SplittedAnswer = answer.split()
 			SplittedPrompt = prompt.split()
+			SplittedAnswer = answer.split()
 			buffer = []
 			for token in SplittedPrompt:
 				if not token in knowledge[1].values():
@@ -180,6 +160,7 @@ if __name__ == "__main__":
 					continue
 				buffer.append(VectorizedToken)
 			FinalAnswer.append(buffer)
+
 			for finalP, finalA in zip(FinalPrompt, FinalAnswer):
 				MeaningWords = [token for token in finalP if token[0] == "X"]
 				for token in MeaningWords:
@@ -202,7 +183,7 @@ if __name__ == "__main__":
 				PrevPatterns = []
 				if ClosestPatternV:
 					PrevSim = ClosestPatternV[1]
-					PrevPattern = ClosestPatternV[2]
+					PrevPatterns = ClosestPatternV[2]
 				else:
 					ClosestPatternV = [" ".join([choice(list(knowledge[1].keys())) for _ in range(3)]), 0, []]
 				ResponseBuffer = ClosestPatternV[0].split() if len(ClosestPatternV[0]) > 1 else list(ClosestPatternV[0])
@@ -211,8 +192,10 @@ if __name__ == "__main__":
 					if chance >= PrevSim * 100:
 						ResponseBuffer[i] = choice(list(knowledge[1].keys()))
 					if ClosestPatternV[2]:
-						diff = change(knowledge, tokens, ClosestPatternV[2])
-						if chance <= diff["len"] * 100:
+						diff = change(knowledge, tokens, ClosestPatternV[2] + [[ResponseBuffer, 0]])
+						if diff["len"] > 0:
+							del ResponseBuffer[randint(0, len(ResponseBuffer)-1)]
+						elif diff["len"] < 0:
 							ResponseBuffer.append(choice(list(knowledge[1].keys())))
 						if chance <= diff["struct"] * 100:
 							ResponseBuffer[randint(0,len(ResponseBuffer)-1)] = choice(list(knowledge[1].keys()))
@@ -227,6 +210,9 @@ if __name__ == "__main__":
 				response.append(ResponseBuffer)
 
 				SimTemp =  similarity(knowledge, tokens, ResponseBuffer, finalA)
+				while len(PrevPatterns) > 4:
+					del PrevPatterns[0]
+				PrevPatterns.append([ResponseBuffer, SimTemp])
 				ClosestPatternK_str = " ".join(ClosestPatternK) if not isinstance(ClosestPatternK, str) else ClosestPatternK
 				ResponseBuffer_str = " ".join(ResponseBuffer)
 				if ClosestPatternK_str in knowledge[2] and knowledge[2][ClosestPatternK_str] and knowledge[2][ClosestPatternK_str][1] > SimTemp:
@@ -240,24 +226,14 @@ if __name__ == "__main__":
 			if sim > HighestAccuracy:
 				HighestAccuracy = sim
 
-		BundleIndex += 1
-		epoch += 1
+		EpochIndex += 1
+		next(LoadingBar)
 		if epoches[1] == "M" and sim == 1.0:
-			print(f"correct in {BundleIndex} epoches")
+			print(f"\ncorrect in {EpochIndex} epoches")
 			break
-		if BundleIndex == bundle:
-			print("epoch: ", f"{epoch:,}")
-			print("final prompt: ", FinalPrompt)
-			print("final answer: ", FinalAnswer)
-			print("closest pattern (key) found: ", ClosestPatternK)
-			print("closest pattern (value) found: ", ClosestPatternV)
-			print("closest similarity found: ", ClosestSim)
-			print("response length: ", len(response[-1]))
-			print("response: ", response)
-			print("similarity: ", sim)
-			print("="*40)
-			BundleIndex = 0
 	EndTime = time.time()
+	print()
+	print("="*110)
 	print("highest accuracy: ", HighestAccuracy)
 	print("took: ", f"{round(EndTime-StartTime, 2):,.2f}s")
 
