@@ -9,8 +9,7 @@ version: joppa 0.1t** \
 go to [naming](#naming-) to know what the suffix means
 or go to [lore](#lore-%EF%B8%8F) to know why it is named joppa
 # Set up 🧱
-***there is no set up yet***
-the project is not finished
+***there is no set up yet***. the project is not finished
 # Support 😣
 Deepseek AI helped me to learn.
 - code: me    
