@@ -50,7 +50,7 @@ possible cominations: b, s, p, e, bt, nb, ns, np, st, pt, et, nbt, nst, npt (no 
 *note: b is base/defualt so it will not show*
 
 ### status
-🔴 paused, working on another project: [joemamasofat676767/TuffCode](https://github.com/joemamasofat676767/TuffCode)
+🟡 side-quest, making everything lua and C++ for proformance, etc
 
 *<sub>copyright (c) 2026 joemamasofat676767 AGPLv3.0 \
 at [LICENSE](LICENSE)</sup>* 
