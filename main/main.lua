@@ -13,6 +13,12 @@ def LoadBar(amount, length=50):
 		yield ...
 ]]
 
+package.cpath = "./?.so;" .. package.cpath
+
+local heavy = require("heavy")
+
+heavy.hello()
+
 local function LoadBar(amount, length)
 	length = length or 50
 	return coroutine.wrap(function()
