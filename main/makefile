@@ -9,7 +9,7 @@ clean c C:
 
 heavy h H: clean heavy.cpp
 	@echo "compiling heavy.cpp:"
-	clang++ -shared -fPIC -x c++ -Wl,--no-as-needed -I$(lua.hpp) heavy.cpp -L$(PREFIX)/lib -llua5.4 -Wl,--export-dynamic -Wl,-u,luaopen_heavy -O0  -o heavy.so
+	clang++ -shared -fPIC -x c++ -Wl,--no-as-needed -I$(lua.hpp) heavy.cpp -L$(PREFIX)/lib -llua5.4 -Wl,--export-dynamic -Wl,-u,luaopen_heavy -O0  -o heavy.so -ferror-limit=0
 	@echo ""
 
 main m M: main.lua
