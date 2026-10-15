@@ -15,9 +15,12 @@ def LoadBar(amount, length=50):
 
 package.cpath = "./?.so;" .. package.cpath
 
-local heavy = require("heavy")
+local GoodMap = require("GoodMap")
 
-heavy.temp()
+sigma = GoodMap.GoodMap()
+sigma:add({1,2,3}, {4,5,6})
+sigma:remove({1,2,3})
+sigma:add({7,8,9}, {10,11,12})
 
 local function LoadBar(amount, length)
 	length = length or 50

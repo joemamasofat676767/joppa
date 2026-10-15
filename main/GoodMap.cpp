@@ -2,6 +2,7 @@
 #include <tuple>
 #include <vector>
 #include <iterator>
+#include <algorithm>
 #include <lua.hpp>
 
 class GoodMap{
@@ -23,16 +24,20 @@ class GoodMap{
 				if(BucketLens.empty()){
 					BucketLens.push_back(TargetLen);
 				}
-				index = 0;
-				while(index < BucketLens.size() && TargetLen > BucketLens[index]){
-					index++;
+				else{
+					index = 0;
+					while(index < BucketLens.size() && TargetLen > BucketLens[index]){
+						index++;
+					}
+					BucketLens.insert(BucketLens.begin() + index, TargetLen);
 				}
-				BucketLens.insert(BucketLens.begin() + index, TargetLen);
 				keys.insert(keys.begin() + index, std::vector<std::vector<uint16_t>>());
-				values.insert(values.begin() + index, std::vector<T>());
+				values.insert(values.begin() + index, std::vector<std::vector<uint16_t>>());
 			}
 
-			if(std::ranges::contains(keys[index], key)){
+			auto it_key = std::find(keys[index].begin(), keys[index].end(), key);
+
+			if(it_key != keys[index].end()){
 				return;
 			}
 
@@ -53,7 +58,9 @@ class GoodMap{
 			std::cout << "\nvalues:\n";
 			for(const auto& item : values){
 				for(const auto& item2 : item){
-					std::cout << item2 << ",";
+					for(const auto& item3 : item2){
+						std::cout << item3 << ",";
+					}
 				}
 			}
 			std::cout << "\n";
@@ -65,50 +72,48 @@ class GoodMap{
 				return;
 			}
 			
-			auto it = std::lower_bound(BucketLens.begin(), BucketLens.end(), TargetLen);
-			if(it == BucketLens.end() || *it != TargetLen){
+			auto it_bucket = std::lower_bound(BucketLens.begin(), BucketLens.end(), TargetLen);
+			if(it_bucket == BucketLens.end() || *it_bucket != TargetLen){
 				return;
 			}
-			int index = std::distance(BucketLens.begin(), it);
+			int index = std::distance(BucketLens.begin(), it_bucket);
 
 			auto& InsideKeys = keys[index];
 			auto& InsideValues = values[index];
 
-			it = std::find(InsideKeys.begin(), InsideKeys.end(), key);
-			if(it == keys[index].end()){
+			auto it_keys = std::find(InsideKeys.begin(), InsideKeys.end(), key);
+			if(it_keys == keys[index].end()){
 				return;
 			}
-			int index2 = std::distance(InsideKeys.begin(), it);
+			int index2 = std::distance(InsideKeys.begin(), it_keys);
 			
 			InsideKeys.erase(InsideKeys.begin() + index2);
-			InsideValue.erase(InsideValue.begin() + index2);
+			InsideValues.erase(InsideValues.begin() + index2);
 
 		}
 
 		std::vector<uint16_t> get(const std::vector<uint16_t>& key){
 			int TargetLen = key.size();
 			if(TargetLen == 0){
-				return NULL;
+				return std::vector<uint16_t>();
 			}
 			
-			auto it = std::lower_bound(BucketLens.begin(), BucketLens.end(), TargetLen);
-			if(it == BucketLens.end() || *it != TargetLen){
-				return NULL;
+			auto it_bucket = std::lower_bound(BucketLens.begin(), BucketLens.end(), TargetLen);
+			if(it_bucket == BucketLens.end() || *it_bucket != TargetLen){
+				return std::vector<uint16_t>();
 			}
-			int index = std::distance(BucketLens.begin(), it);
-
+			int index = std::distance(BucketLens.begin(), (std::vector<int>::iterator)it_bucket);
 			
 			auto& InsideKeys = keys[index];
 			auto& InsideValues = values[index];
 
-			it = std::find(InsideKeys.begin(), InsideKeys.end(), key);
-			if(it == keys[index].end()){
-				return NULL;
+			auto it_keys = std::find(InsideKeys.begin(), InsideKeys.end(), key);
+			if(it_keys == keys[index].end()){
+				return std::vector<uint16_t>();
 			}
-			int index2 = std::distance(InsideKeys.begin(), it);
-			
-			return InsideValues[index2];
+			int index2 = std::distance(InsideKeys.begin(), it_keys);
 
+			return InsideValues[index2];
 		}
 
 };
@@ -149,15 +154,15 @@ extern "C" __attribute__((visibility("default"))){
 
 	int GoodMap_add(lua_State* L){
 		GoodMap** UsrData = (GoodMap**)luaL_checkudata(L, 1, "GoodMap_m");
-		std::vector<uint16_t> key(lua_rawlen(L, 1));
+		std::vector<uint16_t> key(lua_rawlen(L, 2));
 		for(int i = 0; i < key.size(); lua_pop(L, 1)){
-			lua_rawgeti(L, 1, i+1);
+			lua_rawgeti(L, 2, i+1);
 			key[i++] = (uint16_t)lua_tointeger(L, -1);
 		}
 
-		std::vector<uint16_t> value(lua_rawlen(L, 2));
+		std::vector<uint16_t> value(lua_rawlen(L, 3));
 		for(int i = 0; i < value.size(); lua_pop(L, 1)){
-			lua_rawgeti(L, 2, i+1);
+			lua_rawgeti(L, 3, i+1);
 			value[i++] = (uint16_t)lua_tointeger(L, -1);
 		}
 
@@ -168,9 +173,9 @@ extern "C" __attribute__((visibility("default"))){
 
 	int GoodMap_remove(lua_State* L){
 		GoodMap** UsrData = (GoodMap**)luaL_checkudata(L, 1, "GoodMap_m");
-		std::vector<uint16_t> key(lua_rawlen(L, 1));
+		std::vector<uint16_t> key(lua_rawlen(L, 2));
 		for(int i = 0; i < key.size(); lua_pop(L, 1)){
-			lua_rawgeti(L, 1, i+1);
+			lua_rawgeti(L, 2, i+1);
 			key[i++] = (uint16_t)lua_tointeger(L, -1);
 		}
 
@@ -179,7 +184,7 @@ extern "C" __attribute__((visibility("default"))){
 		return 0;
 	}
 
-	int luaopen_heavy(lua_State* L){
+	int luaopen_GoodMap(lua_State* L){
 		const luaL_Reg GoodMap_stuff[] = {
 			{"add", GoodMap_add},
 			{"remove", GoodMap_remove},
@@ -190,9 +195,11 @@ extern "C" __attribute__((visibility("default"))){
 		lua_setfield(L, -2, "__index");
 		lua_pushcfunction(L, GoodMap_gc);
 		lua_setfield(L, -2, "__gc");
-		lua_register(L, "GoodMap", GoodMap_new);
 		luaL_setfuncs(L, GoodMap_stuff, 0);
-		luaL_newlib(L, GoodMap_stuff);
+		lua_pop(L, 1);
+		lua_newtable(L);
+		lua_pushcfunction(L, GoodMap_new);
+		lua_setfield(L, -2, "GoodMap");
 
 		return 1;
 	}
