@@ -184,10 +184,30 @@ extern "C" __attribute__((visibility("default"))){
 		return 0;
 	}
 
+	int GoodMap_get(lua_State* L){
+		GoodMap** UsrData = (GoodMap**)luaL_checkudata(L, 1, "GoodMap_m");
+		std::vector<uint16_t> key(lua_rawlen(L, 2));
+		for(int i = 0; i < key.size(); lua_pop(L, 1)){
+			lua_rawgeti(L, 2, i+1);
+			key[i++] = (uint16_t)lua_tointeger(L, -1);
+		}
+
+		std::vector<uint16_t> value = (*UsrData)->get(key);
+
+		lua_newtable(L);
+		for(int i = 0; i < value.size(); i++){
+			lua_pushinteger(L, value[i]);
+			lua_rawseti(L, -2, i+1);
+		}
+
+		return 1;
+	}
+
 	int luaopen_GoodMap(lua_State* L){
 		const luaL_Reg GoodMap_stuff[] = {
 			{"add", GoodMap_add},
 			{"remove", GoodMap_remove},
+			{"get", GoodMap_get},
 			{NULL, NULL}
 		};
 		luaL_newmetatable(L, "GoodMap_m");

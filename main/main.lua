@@ -17,10 +17,11 @@ package.cpath = "./?.so;" .. package.cpath
 
 local GoodMap = require("GoodMap")
 
-sigma = GoodMap.GoodMap()
+local sigma = GoodMap.GoodMap()
 sigma:add({1,2,3}, {4,5,6})
 sigma:remove({1,2,3})
 sigma:add({7,8,9}, {10,11,12})
+print(sigma:get({7,8,9})[1])
 
 local function LoadBar(amount, length)
 	length = length or 50
