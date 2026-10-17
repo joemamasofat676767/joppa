@@ -1,5 +1,3 @@
-#include <iostream>
-#include <tuple>
 #include <vector>
 #include <iterator>
 #include <algorithm>
@@ -43,27 +41,6 @@ class GoodMap{
 
 			keys[index].push_back(std::move(key));
 			values[index].push_back(std::move(value));
-			std::cout << "bucket lens:\n";
-			for(const auto& item : BucketLens){
-				std::cout << item << ",";
-			}
-			std::cout << "\nkeys:\n";
-			for(const auto& item : keys){
-				for(const auto& item2: item){
-					for(const auto& item3 : item2){
-						std::cout << item3 << ",";
-					}
-				}
-			}
-			std::cout << "\nvalues:\n";
-			for(const auto& item : values){
-				for(const auto& item2 : item){
-					for(const auto& item3 : item2){
-						std::cout << item3 << ",";
-					}
-				}
-			}
-			std::cout << "\n";
 		}
 
 		void remove(std::vector<uint16_t>& key){
@@ -119,19 +96,6 @@ class GoodMap{
 };
 
 extern "C" __attribute__((visibility("default"))){
-
-	//int GetKnowledge(lua_State* L){
-	//	std::tuple<int, std::vector<std::string>, >
-
-	//	return ;
-	//}
-
-	//int similarity(lua_State* L){
-		
-		
-	//	return 0;
-	//}
-
 	int GoodMap_new(lua_State* L){
 		GoodMap** UsrData = (GoodMap**)lua_newuserdata(L, sizeof(GoodMap*));
 		*UsrData = new GoodMap();
