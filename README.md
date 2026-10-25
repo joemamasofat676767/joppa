@@ -1,4 +1,4 @@
-# Overall 
+# Overall (lua and c++ version)
 ## ***This is my ai: *joppa*™.***
 
 <img src="./images/logo.jpg" alt="orange hand-drawn smiley face" width="30%">
