@@ -44,19 +44,17 @@ std::vector<std::vector<uint16_t>>* ReadKnowledge(){
 	std::vector<uint16_t> knowledge_buf;
 	for(int i = 0; i < knowledge_buckets[knowledge_buckets_i+1]; i++){
 		if(std::getline(knowledge_file, line)){
+			int read_i = 0;
 			std::cout << "line: " << line << "\n";
-			std::stringstream line_stream(line.substr(0, knowledge_buckets[knowledge_buckets_i] * 2 - 1));
-			std::cout << "sub line: " << line.substr(0, knowledge_buckets[knowledge_buckets_i] * 2 - 1) << "\n";
+			std::stringstream line_stream(line);
 			uint16_t temp;
-			while(line_stream >> temp){
+			while(read_i < knowledge_buckets[knowledge_buckets_i] && line_stream >> temp){
 				std::cout << "key buf: " << temp << "\n";
 				knowledge_buf.push_back(temp);
+				read_i++;
 			}
 			knowledge_keys.push_back(knowledge_buf);
 			knowledge_buf.clear();
-			line_stream.clear();
-			line_stream.str(line.substr(knowledge_buckets[knowledge_buckets_i] + 1, line.size() - knowledge_buckets[knowledge_buckets_i]));
-			std::cout << "sub line 2: " << line.substr(knowledge_buckets[knowledge_buckets_i] + 1, line.size() - knowledge_buckets[knowledge_buckets_i]) << "\n";
 			while(line_stream >> temp){
 				std::cout << "value buf: " << temp << "\n";
 				knowledge_buf.push_back(temp);
