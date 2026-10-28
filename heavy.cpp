@@ -42,33 +42,29 @@ std::vector<std::vector<uint16_t>>* ReadKnowledge(){
 	std::vector<std::vector<uint16_t>> knowledge_keys;
 	std::vector<std::vector<uint16_t>> knowledge_values;
 	std::vector<uint16_t> knowledge_buf;
-	for(int i = 0; i < knowledge_buckets[knowledge_buckets_i+1]; i++){
-		if(std::getline(knowledge_file, line)){
+	while(knowledge_buckets_i < knowledge_buckets.size()){
+		for(int i = 0; i < knowledge_buckets[knowledge_buckets_i+1]; i++){
 			int read_i = 0;
 			std::cout << "line: " << line << "\n";
 			std::stringstream line_stream(line);
 			uint16_t temp;
-			while(read_i < knowledge_buckets[knowledge_buckets_i] && line_stream >> temp){
+			while(read_i < knowledge_buckets[knowledge_buckets_i] && knowledge_file.read((char*)(&temp), 2)){
 				std::cout << "key buf: " << temp << "\n";
 				knowledge_buf.push_back(temp);
 				read_i++;
 			}
 			knowledge_keys.push_back(knowledge_buf);
 			knowledge_buf.clear();
-			while(line_stream >> temp){
+			while(knowledge_file.read((char*)(&temp), 2)){
+			if(temp == 0){ break; }
 				std::cout << "value buf: " << temp << "\n";
 				knowledge_buf.push_back(temp);
 			}
 			knowledge_values.push_back(knowledge_buf);
 			knowledge_buf.clear();
 		}
-		else{
-			std::cout << "break";
-			break;
-		}
+		knowledge_buckets_i += 2;
 	}
-	knowledge_buckets_i += 2;
-
 	knowledge_file.close();
 
 	std::vector<std::vector<uint16_t>>* knowledge = new std::vector<std::vector<uint16_t>>[2]{knowledge_keys, knowledge_values};
@@ -79,20 +75,22 @@ std::vector<std::vector<uint16_t>>* ReadKnowledge(){
 int main(){
 	auto* knowledge = ReadKnowledge();
 	std::cout << "knowledge:\n";
+	std::cout << "keys: ";
 	for(const auto& item1 : knowledge[0]){
 		for(const auto& item2 : item1){
-			std::cout << item2 << " ";
+			std::cout <<  item2 << " ";
 		}
 		std::cout << ", ";
 	}
 	std::cout << "\b\b \n";
+	std::cout << "values: ";
 	for(const auto& item1 : knowledge[1]){
 		for(const auto& item2 : item1){
 			std::cout << item2 << " ";
 		}
 		std::cout << ", ";
 	}
-	std::cout << "\b\b";
+	std::cout << "\b\b \n";
 
 	delete[] knowledge;
 
