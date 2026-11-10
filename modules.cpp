@@ -2,6 +2,9 @@
 #include <iterator>
 #include <algorithm>
 #include <lua.hpp>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 
 class GoodMap{
 	private:
@@ -96,6 +99,70 @@ class GoodMap{
 };
 
 extern "C" __attribute__((visibility("default"))){
+	int parse(lua_State* L){
+		GoodMap** UsrData = (GoodMap**)lua_newuserdata(L, sizeof(GoodMap*));
+		*UsrData = new GoodMap();
+	
+		std::ifstream configs_file("config.txt");
+		// 0 knowledge file, 1 knowledge buckets
+		int configs_i = 0;
+		// bucket size & how many
+		std::vector<int> knowledge_buckets;
+		std::ifstream knowledge_file;
+		std::string line;
+		while(std::getline(configs_file, line)){
+			if(line.at(0) == '#' || line.empty()){
+				continue;
+			}
+			switch(configs_i){
+				case 0:
+					knowledge_file.open(line, std::ios::binary);
+					break;
+				case 1:
+					std::stringstream line_stream(line);
+					uint16_t temp;
+					while(line_stream >> temp){
+						knowledge_buckets.push_back(temp);
+					}
+					break;
+			}
+			configs_i++;
+		}
+		configs_file.close();
+
+		if(knowledge_buckets.size() < 2){
+			return 0;
+		}
+		int knowledge_buckets_i = 0;
+		std::vector<std::vector<uint16_t>> knowledge_keys;
+		std::vector<std::vector<uint16_t>> knowledge_values;
+		std::vector<uint16_t> knowledge_buf;
+		while(knowledge_buckets_i < knowledge_buckets.size()){
+			for(int i = 0; i < knowledge_buckets[knowledge_buckets_i+1]; i++){
+				int read_i = 0;
+				uint16_t temp;
+				std::vector<uint16_t> knowledge_keys_temp;
+				std::vector<uint16_t> knowledge_values_temp;
+				while(read_i < knowledge_buckets[knowledge_buckets_i] && knowledge_file.read((char*)(&temp), 2)){
+					knowledge_keys_temp.push_back(temp);
+					read_i++;
+				}
+				while(knowledge_file.read((char*)(&temp), 2)){
+					if(temp == 0){ break; }
+					knowledge_values_temp.push_back(temp);
+				}
+				(*UsrData)->add(std::move(knowledge_keys_temp), std::move(knowledge_values_temp));
+			}
+			knowledge_buckets_i += 2;
+		}
+		knowledge_file.close();
+
+		luaL_getmetatable(L, "GoodMap_m");
+		lua_setmetatable(L, -2);
+
+		return 1;
+	}
+
 	int GoodMap_new(lua_State* L){
 		GoodMap** UsrData = (GoodMap**)lua_newuserdata(L, sizeof(GoodMap*));
 		*UsrData = new GoodMap();
@@ -167,11 +234,11 @@ extern "C" __attribute__((visibility("default"))){
 		return 1;
 	}
 
-	int luaopen_GoodMap(lua_State* L){
-		const luaL_Reg GoodMap_stuff[] = {
-			{"add", GoodMap_add},
-			{"remove", GoodMap_remove},
-			{"get", GoodMap_get},
+	int luaopen_modules(lua_State* L){
+		const luaL_Reg GoodMap_methods[] = {
+			{"GoodMap_add", GoodMap_add},
+			{"GoodMap_remove", GoodMap_remove},
+			{"GoodMap_get", GoodMap_get},
 			{NULL, NULL}
 		};
 		luaL_newmetatable(L, "GoodMap_m");
@@ -179,11 +246,13 @@ extern "C" __attribute__((visibility("default"))){
 		lua_setfield(L, -2, "__index");
 		lua_pushcfunction(L, GoodMap_gc);
 		lua_setfield(L, -2, "__gc");
-		luaL_setfuncs(L, GoodMap_stuff, 0);
+		luaL_setfuncs(L, GoodMap_methods, 0);
 		lua_pop(L, 1);
 		lua_newtable(L);
 		lua_pushcfunction(L, GoodMap_new);
 		lua_setfield(L, -2, "GoodMap");
+		lua_pushcfunction(L, parse);
+		lua_setfield(L, -2, "parse");
 
 		return 1;
 	}
