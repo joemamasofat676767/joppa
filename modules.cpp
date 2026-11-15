@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <cmath>
 
 class GoodMap{
 	private:
@@ -163,6 +164,49 @@ extern "C" __attribute__((visibility("default"))){
 		return 1;
 	}
 
+	float c_math_DotProduct(std::vector<float> vect1, std::vector<float> vect2){
+		float DotProduct = 0;
+		for(int i = 0 ; i < vect1.size() ; i++){
+			DotProduct += vect1[i] * vect2[i];
+		}
+
+		return DotProduct;
+	}
+
+	int math_CosineSim(lua_State* L){
+		std::vector<float> vect1;
+		std::vector<float> vect2;
+
+		lua_pushnil(L);
+		while(lua_next(L, 1) != 0){
+			vect1.push_back(lua_tonumber(L, -1));
+			lua_pop(L, 1);
+		}
+		lua_pushnil(L);
+		while(lua_next(L, 2) != 0){
+			vect2.push_back(lua_tonumber(L, -1));
+			lua_pop(L, 1);
+		}
+
+		float SumOfSquared1 = 0;
+		for(const float& num : vect1){
+			SumOfSquared1 += num*num;
+		}
+		float vect1_mag = std::sqrt(SumOfSquared1);
+
+		float SumOfSquared2 = 0;
+		for(const float& num : vect2){
+			SumOfSquared2 += num*num;
+		}
+		float vect2_mag = std::sqrt(SumOfSquared2);
+
+		float result = c_math_DotProduct(vect1, vect2)/(vect1_mag*vect2_mag);
+
+		lua_pushnumber(L, result);
+
+		return 1;
+	}
+
 	int GoodMap_new(lua_State* L){
 		GoodMap** UsrData = (GoodMap**)lua_newuserdata(L, sizeof(GoodMap*));
 		*UsrData = new GoodMap();
@@ -253,6 +297,8 @@ extern "C" __attribute__((visibility("default"))){
 		lua_setfield(L, -2, "GoodMap");
 		lua_pushcfunction(L, parse);
 		lua_setfield(L, -2, "parse");
+		lua_pushcfunction(L, math_CosineSim);
+		lua_setfield(L, -2, "math_CosineSim");
 
 		return 1;
 	}
